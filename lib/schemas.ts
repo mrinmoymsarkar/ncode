@@ -8,7 +8,19 @@ import { z } from "zod";
  * Right now it accepts ANY non-empty string. It should reject things like "not a url",
  * "ftp://...", a bare host with no path, etc. — and produce a helpful error message.
  */
-export const sourceUrlSchema = z.string().min(1, "Source URL is required");
+export const sourceUrlSchema = z
+  .string()
+  .trim()
+  .min(1, "Source URL is required")
+  .url("Enter a valid URL")
+  .refine((value) => {
+    try {
+      const url = new URL(value);
+      return (url.protocol === "http:" || url.protocol === "https:") && url.pathname !== "/";
+    } catch {
+      return false;
+    }
+  }, "Use an HTTP(S) media URL with a path");
 
 export const createJobSchema = z.object({
   sourceUrl: sourceUrlSchema,
