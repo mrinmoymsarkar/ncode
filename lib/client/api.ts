@@ -1,4 +1,4 @@
-import { getAccessToken } from "@/lib/client/token-store";
+import { clearTokens, getAccessToken, getRefreshToken, setTokens } from "@/lib/client/token-store";
 
 export class ApiError extends Error {
   status: number;
@@ -37,7 +37,27 @@ interface RequestOptions {
   signal?: AbortSignal;
 }
 
-async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+let refreshPromise: Promise<string | null> | null = null;
+
+async function refreshAccessToken(): Promise<string | null> {
+  if (refreshPromise) return refreshPromise;
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return null;
+  refreshPromise = fetch("/api/auth/refresh", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ refreshToken }),
+  }).then(async (res) => {
+    if (!res.ok) return null;
+    const body = (await res.json()) as { accessToken?: string };
+    if (!body.accessToken) return null;
+    setTokens({ accessToken: body.accessToken });
+    return body.accessToken;
+  }).catch(() => null).finally(() => { refreshPromise = null; });
+  return refreshPromise;
+}
+
+async function request<T>(path: string, options: RequestOptions = {}, hasRetried = false): Promise<T> {
   const headers: Record<string, string> = {};
   const access = getAccessToken();
   if (access) headers["authorization"] = `Bearer ${access}`;
@@ -50,10 +70,12 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     signal: options.signal,
   });
 
-  // TODO(candidate): handle 401 here — attempt ONE silent refresh (POST /api/auth/refresh) and
-  // retry the original request once. If the refresh fails, clear tokens and dispatch
-  // AUTH_LOGOUT_EVENT so the app can route back to /signin.
-  // Bonus: make sure several requests that 401 at the same time share ONE refresh, not N.
+  if (res.status === 401 && !hasRetried) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) return request(path, options, true);
+    clearTokens();
+    if (typeof window !== "undefined") window.dispatchEvent(new Event(AUTH_LOGOUT_EVENT));
+  }
 
   if (!res.ok) throw await parseError(res);
   if (res.status === 204) return undefined as T;
@@ -62,5 +84,5 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
 export const api = {
   get: <T>(path: string, signal?: AbortSignal) => request<T>(path, { signal }),
-  post: <T>(path: string, body?: unknown) => request<T>(path, { method: "POST", body }),
+  post: <T>(path: string, body?: unknown, signal?: AbortSignal) => request<T>(path, { method: "POST", body, signal }),
 };
