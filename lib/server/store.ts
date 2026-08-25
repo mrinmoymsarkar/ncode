@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { type EncodeRun, type Job } from "@/lib/types";
+import { ACTIVE_STAGES, type EncodeRun, type Job, type JobStatus } from "@/lib/types";
 
 // In-memory store. A single Node process in `next dev`, so module-level Maps are fine.
 //
@@ -27,18 +27,60 @@ export const FAIL_URL = "https://cdn.example.com/videos/corrupt.mp4";
  * PROBING → TRANSCODING → PACKAGING over ~30s, then COMPLETED. If sourceUrl === FAIL_URL, end in
  * FAILED partway through. Keeping it pure (taking `now`) makes it easy to unit-test.
  */
-export function computeRun(_record: RunRecord, _now: number = Date.now()): EncodeRun {
-  throw new Error("Not implemented: computeRun");
+export function computeRun(record: RunRecord, now: number = Date.now()): EncodeRun {
+  const elapsed = Math.max(0, now - record.startedAt);
+  const failed = record.sourceUrl === FAIL_URL;
+  const failedAt = 16_000;
+  if (failed && elapsed >= failedAt) {
+    return {
+      id: record.id, jobId: record.jobId, stage: "FAILED", progressPct: 48,
+      error: "The source media could not be decoded.",
+    };
+  }
+
+  const stages = [
+    { stage: ACTIVE_STAGES[0], start: 0, end: 3_000 },
+    { stage: ACTIVE_STAGES[1], start: 3_000, end: 8_000 },
+    { stage: ACTIVE_STAGES[2], start: 8_000, end: 12_000 },
+    { stage: ACTIVE_STAGES[3], start: 12_000, end: 27_000 },
+    { stage: ACTIVE_STAGES[4], start: 27_000, end: 32_000 },
+  ] as const;
+  if (elapsed >= 32_000) {
+    return {
+      id: record.id, jobId: record.jobId, stage: "COMPLETED", progressPct: 100,
+      result: {
+        durationSec: 142,
+        renditions: [
+          { label: "1080p", width: 1920, height: 1080, sizeMb: 184.2 },
+          { label: "720p", width: 1280, height: 720, sizeMb: 96.4 },
+          { label: "480p", width: 854, height: 480, sizeMb: 51.8 },
+        ],
+        warnings: ["Audio was normalized to stereo."],
+      },
+    };
+  }
+  const current = stages.find(({ start, end }) => elapsed >= start && elapsed < end) ?? stages[0];
+  const progressPct = Math.round(((elapsed - current.start) / (current.end - current.start)) * 100);
+  return { id: record.id, jobId: record.jobId, stage: current.stage, progressPct };
 }
 
 // --- job/run CRUD (provided) ---
 
 export function listJobs(): Job[] {
-  return [...jobs.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return [...jobs.values()].map(withCurrentStatus).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
 export function getJob(id: string): Job | null {
-  return jobs.get(id) ?? null;
+  const job = jobs.get(id);
+  return job ? withCurrentStatus(job) : null;
+}
+
+function withCurrentStatus(job: Job): Job {
+  if (!job.latestRunId) return { ...job };
+  const run = getRun(job.latestRunId);
+  if (!run) return { ...job };
+  const status: JobStatus = run.stage === "COMPLETED" ? "COMPLETED" : run.stage === "FAILED" ? "FAILED" : "RUNNING";
+  return { ...job, status };
 }
 
 export function createJob(input: { sourceUrl: string; title?: string }): Job {
