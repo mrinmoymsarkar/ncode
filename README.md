@@ -5,46 +5,79 @@ a signed-in user creates an encode **job** from a media URL, starts a **transcod
 **progress stream in live**, and sees the **output renditions** when it finishes.
 
 The full brief — requirements, the API contract, and what we look for — is in **`BRIEF.md`** in this
-repo. Read it first; this README only covers running the scaffold.
+repo. Read it first for the full requirements; this README documents the completed implementation.
 
 ## Run it
 
 ```bash
 npm install
 npm run dev        # http://localhost:3000
-npm run test:run   # tests (one example test is included and passes)
+npm run test:run   # run the Vitest test suite
 npm run typecheck  # tsc --noEmit
 npm run build      # production build
 ```
 
 Requires **Node 20+**. **Demo login:** `demo@encodr.dev` / `password123`.
 
-On a fresh checkout the app runs but most features are stubbed — the API routes return `501` and the
-client logic is unimplemented. That's expected: your job is to fill in the `TODO(candidate)` markers.
+The application is implemented as a small end-to-end encode workflow. It uses in-memory storage, so
+restarting the server clears all jobs and runs.
 
-## What's provided vs. what you build
+## Implemented workflow
 
-**Provided (so you don't fight setup):**
-- Next.js (App Router) + TypeScript (strict) + Tailwind, configured and running.
-- TanStack Query, React Hook Form + Zod, `@microsoft/fetch-event-source` installed.
-- The **API contract** as shared types (`lib/types.ts`) and the schema file (`lib/schemas.ts`).
-- The app shell + auth-aware layout, a working sign-in page, token storage plumbing
-  (`lib/client/token-store.ts`), HTTP helpers (`lib/server/http.ts`), and a couple of UI components.
-- Worked examples of the React Query pattern (`useJobs`, `useJob`).
+The signed-in user can:
 
-**You implement (look for `TODO(candidate)`):**
-- `lib/server/auth.ts` — issue/verify tokens (short-lived access + refresh).
-- `app/api/**` — the Route Handlers (auth, jobs, runs, and the **SSE** progress stream).
-- `lib/server/store.ts` — `computeRun()`: the encode run's stage/progress state machine.
-- `lib/client/api.ts` — 401 → silent refresh + single retry.
-- `lib/client/auth-context.tsx` — `login()`.
-- `lib/client/use-run-stream.ts` — the SSE subscription hook (with cleanup).
-- `lib/client/hooks.ts` — create-job / start-run mutations.
-- `lib/schemas.ts` — real source-URL validation.
-- The **job list + create form** and the **job detail** screen (run controls, live progress, results).
+- Create and list encode jobs from an HTTP(S) source URL.
+- Start a run from a job detail page.
+- Watch authenticated live progress through an SSE stream.
+- See stage, percentage, streaming log messages, and terminal errors.
+- Retry failed runs and view output renditions after completion.
 
-Use `https://cdn.example.com/videos/corrupt.mp4` as a source URL — your run state machine should make
-that one **fail** partway, so you can build (and we can see) the error/retry path.
+The URL `https://cdn.example.com/videos/corrupt.mp4` is a deterministic failure fixture for testing
+the error and retry path.
+
+## Design decisions
+
+### Authentication
+
+The demo server issues short-lived access tokens and longer-lived refresh tokens. Tokens are signed
+HMAC payloads containing the user, token type, and expiry. This keeps the implementation small and
+does not require an additional JWT dependency; the signing secret comes from `AUTH_SECRET` and has a
+development fallback.
+
+The client attaches the access token to API requests. When a request receives `401`, the client makes
+one silent refresh request, retries the original request once, and dispatches a logout event if the
+refresh fails. A shared in-flight refresh promise prevents concurrent expired requests from causing
+a refresh stampede.
+
+### SSE progress
+
+The browser uses `@microsoft/fetch-event-source` instead of native `EventSource` so the access token
+can be sent in the `Authorization` header. The server emits snapshots from the same time-based state
+machine used by the run API. `AbortController` cleanup closes the stream when the run changes or the
+detail page unmounts.
+
+### Validation and state
+
+`createJobSchema` is shared by React Hook Form and the jobs Route Handler, keeping client and server
+rules aligned. The server returns field-level `422` errors, which the form maps back to `sourceUrl`
+and `title`. Run progress is represented by explicit typed stages and derived from elapsed time,
+which keeps the in-memory simulation deterministic and easy to test.
+
+## Tests
+
+The suite focuses on meaningful core behavior rather than exhaustive edge cases:
+
+- Valid and invalid HTTP(S) source URL validation.
+- Successful run progression to `COMPLETED`.
+- Corrupt fixture progression to `FAILED`.
+- Job creation returning field-level validation errors.
+- SSE route authentication and event streaming.
+
+Run the tests with:
+
+```bash
+npm run test:run
+```
 
 ## Notes & ground rules
 
@@ -52,9 +85,8 @@ that one **fail** partway, so you can build (and we can see) the error/retry pat
   wiping data is fine.
 - Keep the access-token TTL short (~60s) so your refresh path is actually exercised.
 - AI tools are allowed, but you own every line — there's a follow-up interview where you'll explain and
-  extend your own code.
+  extend your own code. Local commit walkthroughs are available in `docs/`.
 - If something's ambiguous, make a reasonable call, note it here, and move on.
 
-When you're done, please update this README with: anything you assumed, key design decisions
-(especially how you authenticated the SSE stream and how the refresh/retry works), and what you'd do
-next with more time.
+Optional stretch ideas and future-work considerations remain documented in `BRIEF.md`; they are not
+required for the core implementation.
