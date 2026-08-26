@@ -67,7 +67,7 @@ export default function JobsPage() {
               {...register("sourceUrl")}
               type="url"
               placeholder="https://cdn.example.com/videos/corrupt.mp4"
-              className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="w-full rounded-xl border border-neutral-300 bg-black px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               aria-invalid={errors.sourceUrl ? "true" : "false"}
               autoComplete="off"
             />
@@ -88,7 +88,7 @@ export default function JobsPage() {
               {...register("title")}
               type="text"
               placeholder="Optional title"
-              className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="w-full rounded-xl border border-neutral-300 bg-black px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               aria-invalid={errors.title ? "true" : "false"}
               autoComplete="off"
             />

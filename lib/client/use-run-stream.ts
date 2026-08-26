@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { fetchEventSource, type EventSourceMessage } from "@microsoft/fetch-event-source";
 import { getAccessToken } from "@/lib/client/token-store";
 import { isTerminalStage, type RunEvent, type Stage } from "@/lib/types";
@@ -28,6 +28,11 @@ const initialState: RunStreamState = {
  */
 export function useRunStream(runId: string | null, onTerminal?: () => void): RunStreamState {
   const [state, setState] = useState<RunStreamState>(initialState);
+  const onTerminalRef = useRef(onTerminal);
+
+  useEffect(() => {
+    onTerminalRef.current = onTerminal;
+  }, [onTerminal]);
 
   useEffect(() => {
     if (!runId) {
@@ -69,7 +74,7 @@ export function useRunStream(runId: string | null, onTerminal?: () => void): Run
           error: event.error ?? null,
           done: isTerminalStage(event.stage),
         }));
-        if (isTerminalStage(event.stage)) onTerminal?.();
+        if (isTerminalStage(event.stage)) onTerminalRef.current?.();
       },
       onclose: () => {
         if (active) setState((current) => ({ ...current, connected: false }));
@@ -98,7 +103,7 @@ export function useRunStream(runId: string | null, onTerminal?: () => void): Run
       active = false;
       controller.abort();
     };
-  }, [runId, onTerminal]);
+  }, [runId]);
 
   return state;
 }
