@@ -23,7 +23,7 @@ Requires **Node 20+**. **Demo login:** `demo@encodr.dev` / `password123`.
 
 The feature-branch deployment is available at:
 
-**[Open the Encodr live demo](https://ncode-1b54dexs5-mrinmoymsarkars-projects.vercel.app/signin)**
+**[Open the Encodr live demo](https://ncode-liart.vercel.app/)**
 
 Use the sign-in page to access the demo and test the job creation, live progress, failure, retry, and
 completed-results flows.
