@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { ACTIVE_STAGES, type EncodeRun, type Job, type JobStatus } from "@/lib/types";
+import { type EncodeRun, type Job, type JobStatus, type Stage } from "@/lib/types";
 
 // In-memory store. A single Node process in `next dev`, so module-level Maps are fine.
 //
@@ -20,8 +20,6 @@ interface RunRecord {
 export const FAIL_URL = "https://cdn.example.com/videos/corrupt.mp4";
 
 /**
- * TODO(candidate): compute a run's current state.
- *
  * Given a run record and a clock, derive { stage, progressPct, error?, result? }. Suggested approach:
  * model it as a pure function of elapsed time = (now - startedAt). Walk QUEUED → DOWNLOADING →
  * PROBING → TRANSCODING → PACKAGING over ~30s, then COMPLETED. If sourceUrl === FAIL_URL, end in
@@ -38,12 +36,18 @@ export function computeRun(record: RunRecord, now: number = Date.now()): EncodeR
     };
   }
 
-  const stages = [
-    { stage: ACTIVE_STAGES[0], start: 0, end: 3_000 },
-    { stage: ACTIVE_STAGES[1], start: 3_000, end: 8_000 },
-    { stage: ACTIVE_STAGES[2], start: 8_000, end: 12_000 },
-    { stage: ACTIVE_STAGES[3], start: 12_000, end: 27_000 },
-    { stage: ACTIVE_STAGES[4], start: 27_000, end: 32_000 },
+  const stages: ReadonlyArray<{
+    stage: Stage;
+    start: number;
+    end: number;
+    startProgress: number;
+    endProgress: number;
+  }> = [
+    { stage: "QUEUED", start: 0, end: 3_000, startProgress: 0, endProgress: 5 },
+    { stage: "DOWNLOADING", start: 3_000, end: 8_000, startProgress: 5, endProgress: 25 },
+    { stage: "PROBING", start: 8_000, end: 12_000, startProgress: 25, endProgress: 35 },
+    { stage: "TRANSCODING", start: 12_000, end: 27_000, startProgress: 35, endProgress: 82 },
+    { stage: "PACKAGING", start: 27_000, end: 32_000, startProgress: 82, endProgress: 99 },
   ] as const;
   if (elapsed >= 32_000) {
     return {
@@ -60,7 +64,10 @@ export function computeRun(record: RunRecord, now: number = Date.now()): EncodeR
     };
   }
   const current = stages.find(({ start, end }) => elapsed >= start && elapsed < end) ?? stages[0];
-  const progressPct = Math.round(((elapsed - current.start) / (current.end - current.start)) * 100);
+  const stageRatio = (elapsed - current.start) / (current.end - current.start);
+  const progressPct = Math.round(
+    current.startProgress + stageRatio * (current.endProgress - current.startProgress),
+  );
   return { id: record.id, jobId: record.jobId, stage: current.stage, progressPct };
 }
 
@@ -118,8 +125,6 @@ export function startRun(jobId: string): RunRecord | null {
   };
   runs.set(record.id, record);
   job.latestRunId = record.id;
-  // TODO(candidate): you'll probably also want the job's status in listJobs()/getJob() to reflect
-  // its latest run (RUNNING / COMPLETED / FAILED). Decide where that derivation lives.
   return record;
 }
 

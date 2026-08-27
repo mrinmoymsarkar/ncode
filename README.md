@@ -62,15 +62,27 @@ a refresh stampede.
 
 The browser uses `@microsoft/fetch-event-source` instead of native `EventSource` so the access token
 can be sent in the `Authorization` header. The server emits snapshots from the same time-based state
-machine used by the run API. `AbortController` cleanup closes the stream when the run changes or the
-detail page unmounts.
+machine used by the run API. Progress can update every second, while the client deduplicates adjacent
+identical log messages so the log shows meaningful stage changes rather than repeated polling ticks.
+`AbortController` cleanup closes the stream when the run changes or the detail page unmounts.
 
 ### Validation and state
 
 `createJobSchema` is shared by React Hook Form and the jobs Route Handler, keeping client and server
 rules aligned. The server returns field-level `422` errors, which the form maps back to `sourceUrl`
-and `title`. Run progress is represented by explicit typed stages and derived from elapsed time,
-which keeps the in-memory simulation deterministic and easy to test.
+and `title`. Run progress is represented by explicit typed stages and derived from elapsed time. The
+percentage is global across the complete run (`0 → 5 → 25 → 35 → 82 → 99 → 100`), so it never jumps
+backward when the stage changes. This keeps the in-memory simulation deterministic and easy to test.
+
+### Why authentication is implemented
+
+Authentication is required by the brief, not an optional enhancement. The API must issue short-lived
+access tokens and refresh tokens, protect every jobs/runs route with `401` responses, and let the
+client silently refresh an expired access token once. This implementation uses a small HMAC-signed
+token format because the brief asks for realistic mocked auth without requiring a real identity
+provider. It is intentionally not production authentication; a real application would use an
+identity provider, secure cookies or a dedicated token library, refresh-token rotation, and
+server-side revocation.
 
 ## Tests
 
@@ -79,6 +91,7 @@ The suite focuses on meaningful core behavior rather than exhaustive edge cases:
 - Valid and invalid HTTP(S) source URL validation.
 - Successful run progression to `COMPLETED`.
 - Corrupt fixture progression to `FAILED`.
+- Monotonic progress across stage boundaries.
 - Job creation returning field-level validation errors.
 - SSE route authentication and event streaming.
 

@@ -23,6 +23,11 @@ const initialState: RunStreamState = {
   done: false,
 };
 
+function appendLog(log: string[], message: string): string[] {
+  if (log.at(-1) === message) return log;
+  return [...log, message];
+}
+
 /**
  * Subscribes to the authenticated SSE endpoint and aborts it on unmount or run changes.
  */
@@ -66,11 +71,13 @@ export function useRunStream(runId: string | null, onTerminal?: () => void): Run
           setState((current) => ({ ...current, error: "Received an invalid progress event." }));
           return;
         }
+        const logMessage = event.error ? `${event.message} ${event.error}` : event.message;
+
         setState((current) => ({
           ...current,
           stage: event.stage,
           progressPct: event.progressPct,
-          log: [...current.log, event.error ? `${event.message} ${event.error}` : event.message],
+          log: appendLog(current.log, logMessage),
           error: event.error ?? null,
           done: isTerminalStage(event.stage),
         }));
