@@ -51,7 +51,8 @@ the error and retry path.
 The demo server issues short-lived access tokens and longer-lived refresh tokens. Tokens are signed
 HMAC payloads containing the user, token type, and expiry. This keeps the implementation small and
 does not require an additional JWT dependency; the signing secret comes from `ENCODR_AUTH_SECRET` and
-has a development fallback.
+has a development fallback. Token issuance also verifies that the requested user exists, so the
+server never creates tokens that cannot be used successfully.
 
 The client attaches the access token to API requests. When a request receives `401`, the client makes
 one silent refresh request, retries the original request once, and dispatches a logout event if the
@@ -89,6 +90,7 @@ server-side revocation.
 The suite focuses on meaningful core behavior rather than exhaustive edge cases:
 
 - Valid and invalid HTTP(S) source URL validation.
+- Valid authentication and rejection of token issuance for unknown users.
 - Successful run progression to `COMPLETED`.
 - Corrupt fixture progression to `FAILED`.
 - Monotonic progress across stage boundaries.

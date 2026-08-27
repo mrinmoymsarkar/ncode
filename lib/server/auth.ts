@@ -75,6 +75,10 @@ function issue(userId: string, type: TokenPayload["type"], ttl: number): string 
 }
 
 export function issueTokens(userId: string): { accessToken: string; refreshToken: string } {
+  if (!findUser(userId)) {
+    throw new Error("Cannot issue tokens for unknown user");
+  }
+
   return {
     accessToken: issue(userId, "access", ACCESS_TTL_SECONDS),
     refreshToken: issue(userId, "refresh", REFRESH_TTL_SECONDS),
@@ -82,6 +86,10 @@ export function issueTokens(userId: string): { accessToken: string; refreshToken
 }
 
 export function issueAccessToken(userId: string): string {
+  if (!findUser(userId)) {
+    throw new Error("Cannot issue an access token for unknown user");
+  }
+
   return issue(userId, "access", ACCESS_TTL_SECONDS);
 }
 
