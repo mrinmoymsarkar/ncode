@@ -19,6 +19,15 @@ npm run build      # production build
 
 Requires **Node 20+**. **Demo login:** `demo@encodr.dev` / `password123`.
 
+## Live demo
+
+The feature-branch deployment is available at:
+
+**[Open the Encodr live demo](https://ncode-1b54dexs5-mrinmoymsarkars-projects.vercel.app/signin)**
+
+Use the sign-in page to access the demo and test the job creation, live progress, failure, retry, and
+completed-results flows.
+
 The application is implemented as a small end-to-end encode workflow. It uses in-memory storage, so
 restarting the server clears all jobs and runs.
 
@@ -41,8 +50,8 @@ the error and retry path.
 
 The demo server issues short-lived access tokens and longer-lived refresh tokens. Tokens are signed
 HMAC payloads containing the user, token type, and expiry. This keeps the implementation small and
-does not require an additional JWT dependency; the signing secret comes from `AUTH_SECRET` and has a
-development fallback.
+does not require an additional JWT dependency; the signing secret comes from `ENCODR_AUTH_SECRET` and
+has a development fallback.
 
 The client attaches the access token to API requests. When a request receives `401`, the client makes
 one silent refresh request, retries the original request once, and dispatches a logout event if the
