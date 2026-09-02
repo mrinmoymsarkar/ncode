@@ -106,27 +106,41 @@ server-side revocation.
 
 ## Tests
 
-The repository contains 11 focused tests across six test files. They cover the core contract rather
+The repository contains 18 focused tests across eight test files. They cover the core contract rather
 than every possible edge case:
 
 | Test file | Coverage |
 | --- | --- |
 | `auth.test.ts` | Usable demo access tokens and rejection of unknown-user token issuance. |
 | `events-route.test.ts` | `401` without authentication and the initial authenticated SSE snapshot. |
+| `protected-routes.test.ts` | `401` protection for every jobs and runs API route. |
+| `client-api.test.ts` | Access-token attachment, one refresh/retry, and logout after refresh failure. |
 | `jobs-route.test.ts` | `422` response with field-level errors for invalid job data. |
+| `jobs-form.test.tsx` | React Testing Library coverage for mapping server errors to form fields. |
 | `schemas.test.ts` | Valid HTTP(S) URLs and rejection of invalid, FTP, and pathless URLs. |
 | `store.test.ts` | Successful completion, corrupt-source failure, and monotonic progress. |
-| `example.test.ts` | Basic verification that the Vitest harness and shared stage helpers work. |
 
-These tests intentionally prioritize the meaningful application path. Browser-level interaction tests,
-refresh-expiry integration tests, persistence tests, and exhaustive API error matrices are outside the
-scope of this small take-home.
+These tests intentionally prioritize the meaningful application path. Full browser-level workflows,
+SSE reconnect/resume, persistence tests, and exhaustive API error matrices are outside the scope of
+this small take-home.
 
 Run the tests with:
 
 ```bash
 npm run test:run
+npm run typecheck
+npm run build
 ```
+
+For a manual workflow check, run `npm run dev`, sign in, create a normal job, and open it to watch
+the roughly 32-second successful run. Use the corrupt fixture above to verify the roughly 16-second
+failure and retry path.
+
+## Future improvements
+
+With more time, I would add a Playwright happy-path test, SSE reconnect/resume after transient
+network failures, persistent storage instead of in-memory Maps, and secure HTTP-only cookies with
+refresh-token rotation for production authentication.
 
 ## Notes & ground rules
 
