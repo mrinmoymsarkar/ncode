@@ -96,13 +96,19 @@ backward when the stage changes. This keeps the in-memory simulation determinist
 
 ### Why authentication is implemented
 
-Authentication is required by the brief, not an optional enhancement. The API must issue short-lived
-access tokens and refresh tokens, protect every jobs/runs route with `401` responses, and let the
-client silently refresh an expired access token once. This implementation uses a small HMAC-signed
-token format because the brief asks for realistic mocked auth without requiring a real identity
-provider. It is intentionally not production authentication; a real application would use an
-identity provider, secure cookies or a dedicated token library, refresh-token rotation, and
-server-side revocation.
+  Authentication is implemented as a realistic mocked flow using the single demo user defined by the
+  take-home. Successful login returns a short-lived access token and a longer-lived refresh token.
+  All jobs and runs routes validate the access token and return `401` for unauthenticated requests.
+
+  Tokens use a small HMAC-signed payload containing the user ID, token type, and expiry. This keeps the
+  implementation self-contained without adding a JWT dependency or external identity provider. The
+  client attaches the access token to requests, performs one silent refresh after a `401`, retries the
+  original request once, and logs the user out if refresh fails.
+
+  This is intentionally suitable for the exercise rather than production authentication. A production
+  system would use secure HTTP-only cookies or a dedicated identity provider, refresh-token rotation,
+  server-side revocation, and stronger operational secret management.
+
 
 ## Tests
 
