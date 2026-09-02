@@ -44,6 +44,25 @@ The signed-in user can:
 The URL `https://cdn.example.com/videos/corrupt.mp4` is a deterministic failure fixture for testing
 the error and retry path.
 
+## API behavior
+
+All jobs and runs endpoints require an access token in the `Authorization: Bearer <token>` header.
+
+| Endpoint | Behavior |
+| --- | --- |
+| `POST /api/auth/login` | Validates credentials and returns access token, refresh token, and user. |
+| `POST /api/auth/refresh` | Validates a refresh token and returns a new access token. |
+| `GET /api/jobs` | Returns the current in-memory job list. |
+| `POST /api/jobs` | Validates `sourceUrl` and optional `title`, returning field-level errors with `422` when invalid. |
+| `GET /api/jobs/:id` | Returns one job or `404`. |
+| `POST /api/runs` | Validates `jobId`, starts a run, and returns its run ID. |
+| `GET /api/runs/:id` | Returns the latest run snapshot or `404`. |
+| `GET /api/runs/:id/events` | Streams authenticated run snapshots over Server-Sent Events. |
+
+Invalid or missing credentials return `401`. Invalid request bodies return `400` or `422`, depending on
+whether the JSON body is malformed or fails schema validation. Jobs and runs are intentionally stored
+in memory, so a server restart clears them.
+
 ## Design decisions
 
 ### Authentication
@@ -87,15 +106,21 @@ server-side revocation.
 
 ## Tests
 
-The suite focuses on meaningful core behavior rather than exhaustive edge cases:
+The repository contains 11 focused tests across six test files. They cover the core contract rather
+than every possible edge case:
 
-- Valid and invalid HTTP(S) source URL validation.
-- Valid authentication and rejection of token issuance for unknown users.
-- Successful run progression to `COMPLETED`.
-- Corrupt fixture progression to `FAILED`.
-- Monotonic progress across stage boundaries.
-- Job creation returning field-level validation errors.
-- SSE route authentication and event streaming.
+| Test file | Coverage |
+| --- | --- |
+| `auth.test.ts` | Usable demo access tokens and rejection of unknown-user token issuance. |
+| `events-route.test.ts` | `401` without authentication and the initial authenticated SSE snapshot. |
+| `jobs-route.test.ts` | `422` response with field-level errors for invalid job data. |
+| `schemas.test.ts` | Valid HTTP(S) URLs and rejection of invalid, FTP, and pathless URLs. |
+| `store.test.ts` | Successful completion, corrupt-source failure, and monotonic progress. |
+| `example.test.ts` | Basic verification that the Vitest harness and shared stage helpers work. |
+
+These tests intentionally prioritize the meaningful application path. Browser-level interaction tests,
+refresh-expiry integration tests, persistence tests, and exhaustive API error matrices are outside the
+scope of this small take-home.
 
 Run the tests with:
 

@@ -1,11 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { type EncodeRun, type Job, type JobStatus, type Stage } from "@/lib/types";
 
-// In-memory store. A single Node process in `next dev`, so module-level Maps are fine.
-//
-// The job/run CRUD below is provided. The interesting part — turning an in-flight run into a
-// live stage + progress over ~20–40s — is left for you.
-
 const jobs = new Map<string, Job>();
 const runs = new Map<string, RunRecord>();
 
@@ -70,8 +65,6 @@ export function computeRun(record: RunRecord, now: number = Date.now()): EncodeR
   );
   return { id: record.id, jobId: record.jobId, stage: current.stage, progressPct };
 }
-
-// --- job/run CRUD (provided) ---
 
 export function listJobs(): Job[] {
   return [...jobs.values()].map(withCurrentStatus).sort((a, b) => b.createdAt.localeCompare(a.createdAt));

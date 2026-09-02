@@ -1,7 +1,6 @@
 import { issueAccessToken, verifyRefreshToken } from "@/lib/server/auth";
 import { error, json } from "@/lib/server/http";
 
-// TODO(candidate): exchange a valid refresh token (from the body) for a new access token.
 export async function POST(req: Request) {
   let body: unknown;
   try { body = await req.json(); } catch { return error(400, "Invalid JSON body"); }

@@ -2,7 +2,6 @@ import { startRun, getJob } from "@/lib/server/store";
 import { startRunSchema } from "@/lib/schemas";
 import { error, json, withAuth } from "@/lib/server/http";
 
-// TODO(candidate): auth-guarded — start an encode run for { jobId } and return { runId } (201).
 export async function POST(req: Request) {
   return withAuth(req, async () => {
     let body: unknown;

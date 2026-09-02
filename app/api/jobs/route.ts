@@ -2,10 +2,6 @@ import { createJobSchema } from "@/lib/schemas";
 import { createJob, listJobs } from "@/lib/server/store";
 import { error, json, withAuth } from "@/lib/server/http";
 
-// TODO(candidate): both handlers must require authentication (see lib/server/http.ts → withAuth).
-//   GET  → return the list of jobs.
-//   POST → validate the body with createJobSchema; on success create a job and return it (201);
-//          on validation failure return field-level errors so the client can map them to the form.
 export async function GET(req: Request) {
   return withAuth(req, () => json(listJobs()));
 }
