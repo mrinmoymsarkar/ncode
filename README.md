@@ -44,6 +44,38 @@ The signed-in user can:
 The URL `https://cdn.example.com/videos/corrupt.mp4` is a deterministic failure fixture for testing
 the error and retry path.
 
+## Architecture
+
+The application is organized as a small backend-for-frontend:
+
+```text
+React UI
+  ↓
+TanStack Query / React Hook Form
+  ↓
+Client API wrapper
+  ↓
+Next.js Route Handlers
+  ↓
+In-memory job and run store
+```
+
+Shared TypeScript types and Zod schemas are used across the client and server to keep API responses
+and validation rules consistent.
+
+## Run lifecycle
+
+Each encode run follows a deterministic, time-based state machine:
+
+```text
+QUEUED → DOWNLOADING → PROBING → TRANSCODING → PACKAGING → COMPLETED
+                                                ↘ FAILED
+```
+
+Normal runs complete after approximately 32 seconds. The corrupt fixture fails after approximately
+16 seconds. Progress is represented as one global percentage from `0` to `100` and never moves
+backward when the run changes stages.
+
 ## API behavior
 
 All jobs and runs endpoints require an access token in the `Authorization: Bearer <token>` header.
@@ -62,6 +94,39 @@ All jobs and runs endpoints require an access token in the `Authorization: Beare
 Invalid or missing credentials return `401`. Invalid request bodies return `400` or `422`, depending on
 whether the JSON body is malformed or fails schema validation. Jobs and runs are intentionally stored
 in memory, so a server restart clears them.
+
+## Error behavior
+
+| Status | Meaning |
+| --- | --- |
+| `400` | Malformed JSON request body. |
+| `401` | Missing, invalid, or expired authentication. |
+| `404` | Job or run does not exist. |
+| `422` | Valid JSON that fails schema validation. |
+
+Job validation errors use a field-level response so the form can display the message beside the
+correct input:
+
+```json
+{
+  "detail": "Validation failed",
+  "fieldErrors": {
+    "sourceUrl": ["Enter a valid URL"],
+    "title": ["Keep the title under 80 characters"]
+  }
+}
+```
+
+## Environment variables
+
+The application runs without manual configuration by using a development fallback secret. An
+explicit local secret can be provided in `.env.local`:
+
+```env
+ENCODR_AUTH_SECRET=replace-with-a-local-secret
+```
+
+The secret signs and verifies the mocked access and refresh tokens. It should not be committed.
 
 ## Design decisions
 
@@ -150,11 +215,36 @@ For a manual workflow check, run `npm run dev`, sign in, create a normal job, an
 the roughly 32-second successful run. Use the corrupt fixture above to verify the roughly 16-second
 failure and retry path.
 
+### Manual verification checklist
+
+1. Open `/signin` and sign in with the demo credentials.
+2. Create a job using a valid HTTP(S) URL.
+3. Open the job and start an encode run.
+4. Confirm live SSE stage, percentage, and log updates.
+5. Wait for `COMPLETED` and confirm duration, renditions, and warnings.
+6. Create a job using the corrupt fixture URL.
+7. Confirm the run reaches `FAILED` and displays an error.
+8. Select `Retry encode` and confirm a new run starts.
+9. Sign out and confirm dashboard access redirects to `/signin`.
+
 ## Future improvements
 
 With more time, I would add a Playwright happy-path test, SSE reconnect/resume after transient
 network failures, persistent storage instead of in-memory Maps, and secure HTTP-only cookies with
 refresh-token rotation for production authentication.
+
+## Trade-offs and limitations
+
+This implementation intentionally uses mocked authentication and in-memory storage because the brief
+does not require a real identity provider or database. Restarting the server clears all jobs and runs.
+
+SSE was chosen because the workflow requires server-to-client progress updates without the additional
+complexity of WebSockets. The client uses `fetch-event-source` so the access token can be sent in an
+Authorization header.
+
+The test suite focuses on the core workflow, API boundaries, authentication recovery, validation, and
+run state machine. Full browser automation, persistence, SSE resume, and exhaustive error matrices
+are outside the take-home scope.
 
 ## Notes & ground rules
 
