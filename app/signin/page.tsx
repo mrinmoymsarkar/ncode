@@ -7,7 +7,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema, type LoginInput } from "@/lib/schemas";
 import { useAuth } from "@/lib/client/auth-context";
 
-// Provided as-is. It calls useAuth().login() — which you implement in lib/client/auth-context.tsx.
 export default function SignInPage() {
   const { login, user, ready } = useAuth();
   const router = useRouter();

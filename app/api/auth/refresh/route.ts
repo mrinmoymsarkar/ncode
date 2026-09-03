@@ -1,6 +1,13 @@
-import { error } from "@/lib/server/http";
+import { issueAccessToken, verifyRefreshToken } from "@/lib/server/auth";
+import { error, json } from "@/lib/server/http";
 
-// TODO(candidate): exchange a valid refresh token (from the body) for a new access token.
-export async function POST(_req: Request) {
-  return error(501, "Not implemented: POST /api/auth/refresh");
+export async function POST(req: Request) {
+  let body: unknown;
+  try { body = await req.json(); } catch { return error(400, "Invalid JSON body"); }
+  if (!body || typeof body !== "object" || !("refreshToken" in body) || typeof body.refreshToken !== "string") {
+    return error(401, "Invalid refresh token");
+  }
+  const userId = verifyRefreshToken(body.refreshToken);
+  if (!userId) return error(401, "Invalid refresh token");
+  return json({ accessToken: issueAccessToken(userId) });
 }

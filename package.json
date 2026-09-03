@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
+    "check": "npm run test:run && npm run typecheck",
     "test": "vitest",
     "test:run": "vitest run"
   },
