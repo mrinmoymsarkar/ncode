@@ -112,17 +112,19 @@ backward when the stage changes. This keeps the in-memory simulation determinist
 
 ## Tests
 
-The repository contains 18 focused tests across eight test files. They cover the core contract rather
+The repository contains 26 focused tests across ten test files. They cover the core contract rather
 than every possible edge case:
 
 | Test file | Coverage |
 | --- | --- |
 | `auth.test.ts` | Usable demo access tokens and rejection of unknown-user token issuance. |
 | `events-route.test.ts` | `401` without authentication and the initial authenticated SSE snapshot. |
+| `auth-routes.test.ts` | Login validation, invalid credentials, and refresh success/failure. |
 | `protected-routes.test.ts` | `401` protection for every jobs and runs API route. |
 | `client-api.test.ts` | Access-token attachment, one refresh/retry, and logout after refresh failure. |
 | `jobs-route.test.ts` | `422` response with field-level errors for invalid job data. |
 | `jobs-form.test.tsx` | React Testing Library coverage for mapping server errors to form fields. |
+| `runs-route.test.ts` | Run creation, missing-job handling, and current run snapshots. |
 | `schemas.test.ts` | Valid HTTP(S) URLs and rejection of invalid, FTP, and pathless URLs. |
 | `store.test.ts` | Successful completion, corrupt-source failure, and monotonic progress. |
 
@@ -138,9 +140,21 @@ npm run typecheck
 npm run build
 ```
 
+Or run the test and typecheck checks together:
+
+```bash
+npm run check
+```
+
 For a manual workflow check, run `npm run dev`, sign in, create a normal job, and open it to watch
 the roughly 32-second successful run. Use the corrupt fixture above to verify the roughly 16-second
 failure and retry path.
+
+## Future improvements
+
+With more time, I would add a Playwright happy-path test, SSE reconnect/resume after transient
+network failures, persistent storage instead of in-memory Maps, and secure HTTP-only cookies with
+refresh-token rotation for production authentication.
 
 ## Future improvements
 

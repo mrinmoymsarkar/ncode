@@ -96,7 +96,13 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
             disabled={startRun.isPending || isRunning}
             className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {activeRunId && !runStream.done ? "Encoding…" : activeRunId && runStream.done ? "Retry encode" : "Start encode"}
+            {startRun.isPending
+              ? "Starting…"
+              : activeRunId && !runStream.done
+                ? "Encoding…"
+                : activeRunId && runStream.done
+                  ? "Retry encode"
+                  : "Start encode"}
           </button>
         </div>
       </div>
@@ -120,6 +126,9 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
           </div>
 
           <div className="space-y-3">
+            <div aria-live="polite" aria-label="Run progress" className="sr-only">
+              {runStream.stage ?? terminalStage ?? "No active run"} {progressPct}%
+            </div>
             <div className="flex items-center justify-between text-sm">
               <span className="font-medium text-neutral-700">
                 {runStream.stage ?? terminalStage ?? "No active run"}
