@@ -96,18 +96,18 @@ backward when the stage changes. This keeps the in-memory simulation determinist
 
 ### Why authentication is implemented
 
-  Authentication is implemented as a realistic mocked flow using the single demo user defined by the
-  take-home. Successful login returns a short-lived access token and a longer-lived refresh token.
-  All jobs and runs routes validate the access token and return `401` for unauthenticated requests.
+Authentication is implemented as a realistic mocked flow using the single demo user defined by the
+take-home. Successful login returns a short-lived access token and a longer-lived refresh token. All
+jobs and runs routes validate the access token and return `401` for unauthenticated requests.
 
-  Tokens use a small HMAC-signed payload containing the user ID, token type, and expiry. This keeps the
-  implementation self-contained without adding a JWT dependency or external identity provider. The
-  client attaches the access token to requests, performs one silent refresh after a `401`, retries the
-  original request once, and logs the user out if refresh fails.
+Tokens use a small HMAC-signed payload containing the user ID, token type, and expiry. This keeps the
+implementation self-contained without adding a JWT dependency or external identity provider. The
+client attaches the access token to requests, performs one silent refresh after a `401`, retries the
+original request once, and logs the user out if refresh fails.
 
-  This is intentionally suitable for the exercise rather than production authentication. A production
-  system would use secure HTTP-only cookies or a dedicated identity provider, refresh-token rotation,
-  server-side revocation, and stronger operational secret management.
+This is intentionally suitable for the exercise rather than production authentication. A production
+system would use secure HTTP-only cookies or a dedicated identity provider, refresh-token rotation,
+server-side revocation, and stronger operational secret management.
 
 
 ## Tests
@@ -149,12 +149,6 @@ npm run check
 For a manual workflow check, run `npm run dev`, sign in, create a normal job, and open it to watch
 the roughly 32-second successful run. Use the corrupt fixture above to verify the roughly 16-second
 failure and retry path.
-
-## Future improvements
-
-With more time, I would add a Playwright happy-path test, SSE reconnect/resume after transient
-network failures, persistent storage instead of in-memory Maps, and secure HTTP-only cookies with
-refresh-token rotation for production authentication.
 
 ## Future improvements
 
